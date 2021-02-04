@@ -686,6 +686,27 @@ pub trait ToRedisArgs: Sized {
     }
 }
 
+impl<'a, T: ToRedisArgs> ToRedisArgs for &'a T {
+    fn to_redis_args(&self) -> Vec<Vec<u8>> {
+        T::to_redis_args(self)
+    }
+
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        T::write_redis_args(self, out)
+    }
+
+    fn describe_numeric_behavior(&self) -> NumericBehavior {
+        T::describe_numeric_behavior(self)
+    }
+
+    fn is_single_arg(&self) -> bool {
+        T::is_single_arg(self)
+    }
+}
+
 macro_rules! itoa_based_to_redis_impl {
     ($t:ty, $numeric:expr) => {
         impl ToRedisArgs for $t {
@@ -769,15 +790,6 @@ impl ToRedisArgs for bool {
 }
 
 impl ToRedisArgs for String {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + RedisWrite,
-    {
-        out.write_arg(self.as_bytes())
-    }
-}
-
-impl<'a> ToRedisArgs for &'a String {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + RedisWrite,
