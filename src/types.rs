@@ -878,6 +878,28 @@ impl<T: ToRedisArgs + Hash + Eq + Ord> ToRedisArgs for BTreeSet<T> {
     }
 }
 
+/// @note: Redis cannot store empty sets so the application has to
+/// check whether the set is empty and if so, not attempt to use that
+/// result
+impl<T: ToRedisArgs + Hash + Eq + Ord, V: ToRedisArgs> ToRedisArgs for HashMap<T, V> {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        for (key, value) in self.iter() {
+            // otherwise things like HMSET will simply NOT work
+            assert!(key.is_single_arg() && value.is_single_arg());
+
+            key.write_redis_args(out);
+            value.write_redis_args(out);
+        }
+    }
+
+    fn is_single_arg(&self) -> bool {
+        self.len() <= 1
+    }
+}
+
 /// this flattens BTreeMap into something that goes well with HMSET
 /// @note: Redis cannot store empty sets so the application has to
 /// check whether the set is empty and if so, not attempt to use that
